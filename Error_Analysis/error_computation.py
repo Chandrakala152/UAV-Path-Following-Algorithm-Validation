@@ -198,29 +198,31 @@ def run_lqr_loiter(q22=5.0, db=100.0, r=100.0):
     return np.array(xte_list)
 
 # --- PROPORTIONAL PURSUIT LINE-OF-SIGHT (PLOS) ---
-def run_plos_line(k1=2.0, k2=0.02):
+def run_plos_line(k1=40.0, k2=0.4):
     x, y, psi = 100.0, 0.0, 0.0
     theta = np.pi / 4
     xte_list = []
     for _ in range(steps):
         d = -x * np.sin(theta) + y * np.cos(theta)
-        psi_d = theta - np.arctan(k2 * d)
-        u = np.clip(k1 * wrap(psi_d - psi), -omega_max, omega_max)
+        u = np.clip(k1 * wrap(theta - psi) - k2 * d, -omega_max, omega_max)
         x += va * np.cos(psi) * dt
         y += va * np.sin(psi) * dt
         psi = wrap(psi + u * dt)
         xte_list.append(abs(d))
     return np.array(xte_list)
 
-def run_plos_loiter(k1=2.0, k2=0.02, r=100.0):
+def run_plos_loiter(k1=20, k2=0.15, r=100.0, L = 200.0):
     x, y, psi = 150.0, 0.0, np.pi/2
+    dir_ = 1  # loiter direction consistent with the initial heading (CCW)
+
     xte_list = []
     for _ in range(steps):
         d_radial = np.hypot(x, y)
         d = d_radial - r
         theta = np.arctan2(y, x)
-        psi_d = theta + np.pi/2 - np.arctan(k2 * d)
-        u = np.clip(k1 * wrap(psi_d - psi), -omega_max, omega_max)
+        cos_val = np.clip((d_radial**2 + r**2 - L**2) / (2.0 * d_radial * d_radial * r),-1.0, 1.0)
+        theta_p = theta + dir_ * np.arccos(cos_val)
+        u = np.clip(k1 * wrap(theta_p - psi) + k2 * d * dir_, -omega_max, omega_max)
         x += va * np.cos(psi) * dt
         y += va * np.sin(psi) * dt
         psi = wrap(psi + u * dt)
